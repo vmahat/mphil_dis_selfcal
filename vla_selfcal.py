@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("selfcal")
 
 # Define paths and parameters
-msfile = ""  # Path to your Measurement Set
-output_dir = ""     # Directory to store output files
+msfile = "/beegfs/general/mahatmav/aa2/msv2/16B-251/pipeline.60631.81245370349/16B-251_3C147_Aarray_Sband_calib.ms"  # Path to your Measurement Set
+output_dir = "/beegfs/general/mahatmav/aa2/msv2/16B-251/pipeline.60631.81245370349/"     # Directory to store output files
 
 try:
     os.makedirs(output_dir, exist_ok=True)
@@ -33,9 +33,7 @@ imaging_params = {
     "robust": -1.0,                  # Robust weighting factor (typically -1 to +1)
     "threshold": "1.0mJy",           # Threshold for CLEAN (in mJy)
     "mask": "3.0",                   # Masking threshold (in mJy)
-    "niter": 100000,                 # Number of minor cycles (iterations)
-    "nmiter": 20,                    # Number of major cycles
-    "channels_out": 12,              # Number of channels for peak finding
+    "niter": 100,                 # Number of minor cycles (iterations)
     "specmode": "mfs",               # Multi-frequency synthesis (MFS)
     "padding": 1.4,                  # Padding factor for imaging
     "interactive": False,            # Run interactively (set to False for no GUI)
@@ -61,7 +59,12 @@ for idx, solint in enumerate(solution_intervals):
 
     # CASA imaging step using tclean
     image_prefix = f"{output_dir}/selfcal_cycle_{idx + 1}"
+
+    # CASA calibration script
+    gain_table = f"{output_dir}/gains_cycle_{idx + 1}.cal"
     casa_script = f"""
+from casatasks import tclean,ft,gaincal,applycal
+
 from casatasks import tclean
 
 # Perform imaging with tclean
@@ -73,40 +76,21 @@ tclean(
     weighting='{imaging_params['weighting']}',
     robust={imaging_params['robust']},
     threshold='{imaging_params['threshold']}',
-    mask='{imaging_params['mask']}',
     niter={imaging_params['niter']},
-    nmiter={imaging_params['nmiter']},
-    channels_out={imaging_params['channels_out']},
     specmode='{imaging_params['specmode']}',
-    padding={imaging_params['padding']},
     interactive={imaging_params['interactive']}
 )
-"""
-    script_path = f"{output_dir}/casa_tclean_cycle_{idx + 1}.py"
-    with open(script_path, "w") as f:
-        f.write(casa_script)
-
-    # Run CASA script for imaging
-    run_casa_command(script_path)
-
-    # CASA calibration script
-    gain_table = f"{output_dir}/gains_cycle_{idx + 1}.cal"
-    casa_script = f"""
-from casatasks import gaincal, applycal
-
-# Get FITS model image from tclean
-importfits(fitsimage='{image_prefix}-model.fits', imagename='{image_prefix}-model.casaim', overwrite=True)
 
 # Predict
-ft(vis='{msfile}', model='{image_prefix}-model.casaim', usescratch=True)
+ft(vis='{msfile}', model='{image_prefix}.model', usescratch=True)
 
 # Perform gain calibration
 gaincal(vis='{msfile}', caltable='{gain_table}', solint='{solint}', refant='ea23', gaintype='G', calmode='p')
 
 # Apply calibration solutions to the MS
-applycal(vis='{msfile}', gaintable={gain_solutions + [gain_table]}, calwt=False)
+applycal(vis='{msfile}', gaintable={gain_solutions + [gain_table]})
 """
-    script_path = f"{output_dir}/casa_gaincal_cycle_{idx + 1}.py"
+    script_path = f"{output_dir}/casa_selfcal_cycle_{idx + 1}.py"
     with open(script_path, "w") as f:
         f.write(casa_script)
 
