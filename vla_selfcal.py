@@ -9,8 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("selfcal")
 
 # Define paths and parameters
-msfile = "/beegfs/general/mahatmav/aa2/msv2/16B-251/pipeline.60631.81245370349/16B-251_3C147_Aarray_Sband_calib.ms"  # Path to your Measurement Set
-output_dir = "/beegfs/general/mahatmav/aa2/msv2/16B-251/pipeline.60631.81245370349/"     # Directory to store output files
+msfile = "/path/to/ms/msname.ms"  # Path to your Measurement Set
+output_dir = "/path/to/selfcal/outputs/"     # Directory to store output files
 
 try:
     os.makedirs(output_dir, exist_ok=True)
